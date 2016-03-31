@@ -10,8 +10,9 @@ There are two versions:
 and fixes a bug in the weight learning algorithm. The feature extraction is (to the best of my
   knowledge) identical to [Table 3.1 in Wang's PhD thesis](https://uwspace.uwaterloo.ca/bitstream/handle/10012/10123/Wang_Tao.pdf).
 
-Initial tests shows _no meaningful differences_ between the two versions beyond speed due to
-removing unnecessary features for Tor from the feature extraction.
+Initial tests show _no meaningful differences_ between the two versions beyond speed due to
+removing unnecessary features for Tor from the feature extraction. The port and bugfixes were a
+way for me to better understand the attack. 
 
 As far as a straight port from source code can be licensed by me (probably not at all),
-the code is licensed under GPLv3. 
+the code is licensed under GPLv3.
