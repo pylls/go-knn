@@ -12,7 +12,10 @@ and fixes a bug in the weight learning algorithm. The feature extraction is (to 
 
 Initial tests show _no meaningful differences_ between the two versions beyond speed due to
 removing unnecessary features for Tor from the feature extraction. The port and bugfixes were a
-way for me to better understand the attack. 
+way for me to better understand the attack.
 
 As far as a straight port from source code can be licensed by me (probably not at all),
 the code is licensed under GPLv3.
+
+This work is part of the [HOT research project](http://www.cs.kau.se/pulls/hot/), funded by the
+ [Swedish Internet Fund](https://www.internetfonden.se/om/the-internet-fund/).
