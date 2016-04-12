@@ -202,7 +202,7 @@ func main() {
 	sites := flag.Int("sites", 0, "number of sites")
 	open := flag.Int("open", 0, "number of open-world sites")
 	instances := flag.Int("instances", 0, "number of instances")
-	suffix := flag.String("suffix", "s", "the suffix for the resulting files with parsed features")
+	suffix := flag.String("suffix", "f", "the suffix for the resulting files with parsed features")
 	flag.Parse()
 
 	// workers
