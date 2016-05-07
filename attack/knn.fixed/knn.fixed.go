@@ -78,7 +78,7 @@ func getMax(f []float64) (val float64, index int) {
 func initWeight(weight []float64) {
 	// as in alg_init_weight
 	for i := 0; i < FeatNum; i++ {
-		weight[i] = float64(rand.Intn(100)/100.0) + 0.5
+		weight[i] = rand.Float64() + 0.5
 	}
 }
 
@@ -208,7 +208,7 @@ func determineWeights(feat [][]float64, weight []float64, start, end int) {
 
 	for i := 0; i < FeatNum; i++ {
 		if weight[i] > 0 {
-			weight[i] *= 0.9 + float64(rand.Intn(100)/500.0)
+			weight[i] *= 0.9 + rand.float64()*0.2
 		}
 	}
 
