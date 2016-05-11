@@ -208,7 +208,7 @@ func determineWeights(feat [][]float64, weight []float64, start, end int) {
 
 	for i := 0; i < FeatNum; i++ {
 		if weight[i] > 0 {
-			weight[i] *= 0.9 + rand.float64()*0.2
+			weight[i] *= 0.9 + rand.Float64()*0.2
 		}
 	}
 
