@@ -32,7 +32,7 @@ Extract the fixed features:
 
 Run the original attack:
 
-    $ go run src/attacks/knn.orig/knn.orig.go
+    $ go run src/attack/knn.orig/knn.orig.go
     2016/04/12 11:32:49 loaded instances: main
     2016/04/12 11:32:50 loaded instances: training
     2016/04/12 11:32:52 loaded instances: testing
@@ -47,7 +47,7 @@ Run the original attack:
 
 Run the fixed attack:
 
-    $ go run src/attacks/knn.fixed/knn.fixed.go 
+    $ go run src/attack/knn.fixed/knn.fixed.go 
     2016/04/12 11:32:45 loaded instances: main
     2016/04/12 11:32:46 loaded instances: training
     2016/04/12 11:32:46 loaded instances: testing
