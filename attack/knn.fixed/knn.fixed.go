@@ -44,9 +44,9 @@ const (
 	RecoPointsNum int = 5
 )
 
-func dist(f1, f2, weight []float64) (d float64) {
-	for i := 0; i < FeatNum; i++ {
-		if f1[i] != -1 && f2[i] != -1 {
+func dist(f1, f2, weight []float64, presentFeats []int) (d float64) {
+	for _, i := range presentFeats {
+		if f2[i] != -1 {
 			d += weight[i] * math.Abs(f1[i]-f2[i])
 		}
 	}
@@ -85,6 +85,7 @@ func initWeight(weight []float64) {
 }
 
 func determineWeights(feat [][]float64, weight []float64, start, end int) {
+	presentFeats := make([]int, FeatNum)
 	distList := make([]float64, SiteNum*TrainNum)
 	recoGoodList := make([]int, RecoPointsNum)
 	recoBadList := make([]int, RecoPointsNum)
@@ -95,9 +96,18 @@ func determineWeights(feat [][]float64, weight []float64, start, end int) {
 		curSite := int(i / TrainNum)
 		var pointBadness, maxGoodDist float64
 
+		// determine what features are present for the instance we're training on
+		numPresent := 0
+		for j := 0; j < FeatNum; j++ {
+			if feat[i][j] != -1 {
+				presentFeats[numPresent] = j
+				numPresent++
+			}
+		}
+
 		// calculate the distance to every other instance
 		for j := 0; j < SiteNum*TrainNum; j++ {
-			distList[j] = dist(feat[i], feat[j], weight)
+			distList[j] = dist(feat[i], feat[j], weight, presentFeats[:numPresent])
 		}
 
 		// don't consider the distance to itself
@@ -245,6 +255,7 @@ func accuracy(trainclosedfeat, testclosedfeat, openfeat [][]float64, weight []fl
 	defer f.Close()
 	flog := log.New(f, "", log.Ldate|log.Ltime)
 
+	presentFeats := make([]int, FeatNum)
 	distList := make([]float64, SiteNum*TestNum+OpenTestNum)
 	classList := make([]int, SiteNum+1)
 
@@ -252,12 +263,21 @@ func accuracy(trainclosedfeat, testclosedfeat, openfeat [][]float64, weight []fl
 	for is := 0; is < SiteNum*TestNum+OpenTestNum; is++ {
 		fmt.Printf("\r\taccuracy... %d (%d-%d)", is, 0, SiteNum*TestNum+OpenTestNum)
 
+		// determine what features are present for the instance we're classifying
+		numPresent := 0
+		for j := 0; j < FeatNum; j++ {
+			if testfeat[is][j] != -1 {
+				presentFeats[numPresent] = j
+				numPresent++
+			}
+		}
+
 		// reset classList and calculate all distances
 		for i := 0; i < SiteNum+1; i++ {
 			classList[i] = 0
 		}
 		for at := 0; at < SiteNum*TestNum+OpenTestNum; at++ {
-			distList[at] = dist(testfeat[is], trainfeat[at], weight)
+			distList[at] = dist(testfeat[is], trainfeat[at], weight, presentFeats[:numPresent])
 		}
 
 		max, _ := getMax(distList)
@@ -374,7 +394,7 @@ func readFile(folder, name string, sites, start int, end int, openWorld bool) (f
 			// extract features
 			fCount := 0
 			for _, f := range strings.Split(features, " ") {
-				curIndex := curSite*instances+curInstAbs
+				curIndex := curSite*instances + curInstAbs
 				if f == "'X'" {
 					feat[curIndex][fCount] = -1
 				} else if f != "" {
