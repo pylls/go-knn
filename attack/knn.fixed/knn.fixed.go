@@ -10,6 +10,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -87,6 +88,7 @@ func initWeight(weight []float64) {
 func determineWeights(feat [][]float64, weight []float64, start, end int) {
 	presentFeats := make([]int, FeatNum)
 	distList := make([]float64, SiteNum*TrainNum)
+	var wg sync.WaitGroup
 	recoGoodList := make([]int, RecoPointsNum)
 	recoBadList := make([]int, RecoPointsNum)
 	log.Printf("starting to learn distance...")
@@ -107,9 +109,15 @@ func determineWeights(feat [][]float64, weight []float64, start, end int) {
 
 		// calculate the distance to every other instance
 		for j := 0; j < SiteNum*TrainNum; j++ {
-			distList[j] = dist(feat[i], feat[j], weight, presentFeats[:numPresent])
+			wg.Add(1)
+			go func(distList, weight []float64, presentFeats []int, i, j, numPresent int) {
+				defer wg.Done()
+				distList[j] = dist(feat[i], feat[j], weight, presentFeats[:numPresent])
+			}(distList, weight, presentFeats, i, j, numPresent)
 		}
 
+		// wait for all distances to finishes computing (goroutines)
+		wg.Wait()
 		// don't consider the distance to itself
 		max, _ := getMax(distList)
 		distList[i] = max
@@ -257,6 +265,7 @@ func accuracy(trainclosedfeat, testclosedfeat, openfeat [][]float64, weight []fl
 
 	presentFeats := make([]int, FeatNum)
 	distList := make([]float64, SiteNum*TestNum+OpenTestNum)
+	var wg sync.WaitGroup
 	classList := make([]int, SiteNum+1)
 
 	log.Println("started computing accuracy...")
@@ -277,9 +286,15 @@ func accuracy(trainclosedfeat, testclosedfeat, openfeat [][]float64, weight []fl
 			classList[i] = 0
 		}
 		for at := 0; at < SiteNum*TestNum+OpenTestNum; at++ {
-			distList[at] = dist(testfeat[is], trainfeat[at], weight, presentFeats[:numPresent])
+			wg.Add(1)
+			go func(distList, weight []float64, presentFeats []int, is, at, numPresent int) {
+				defer wg.Done()
+				distList[at] = dist(testfeat[is], trainfeat[at], weight, presentFeats[:numPresent])
+			}(distList, weight, presentFeats, is, at, numPresent)
 		}
 
+		// wait for all distances to finishes computing (goroutines)
+		wg.Wait()
 		max, _ := getMax(distList)
 		distList[is] = max // don't consider the point representing this instance
 
