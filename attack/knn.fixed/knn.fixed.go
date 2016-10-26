@@ -25,6 +25,8 @@ const (
 	TestNum int = 30
 	// OpenTestNum is the number of instances for open-world testing.
 	OpenTestNum int = 9000
+	// The number of training rounds
+	Rounds int = 10
 
 	// FolderWeight is the folder for weight learning.
 	FolderWeight = "batch/"
@@ -92,146 +94,149 @@ func determineWeights(feat [][]float64, weight []float64, start, end int) {
 	recoGoodList := make([]int, RecoPointsNum)
 	recoBadList := make([]int, RecoPointsNum)
 	log.Printf("starting to learn distance...")
-	for i := start; i < end; i++ {
-		fmt.Printf("\r\tdistance... %d (%d-%d)", i, start, end)
+	for r := 0; r < Rounds; r++ {
+		for i := start; i < end; i++ {
+			fmt.Printf("\r\tround... %d (%d), distance... %d (%d-%d)", r, Rounds, i,
+				start, end)
 
-		curSite := int(i / TrainNum)
-		var pointBadness, maxGoodDist float64
+			curSite := int(i / TrainNum)
+			var pointBadness, maxGoodDist float64
 
-		// determine what features are present for the instance we're training on
-		numPresent := 0
-		for j := 0; j < FeatNum; j++ {
-			if feat[i][j] != -1 {
-				presentFeats[numPresent] = j
-				numPresent++
-			}
-		}
-
-		// calculate the distance to every other instance
-		for j := 0; j < SiteNum*TrainNum; j++ {
-			wg.Add(1)
-			go func(distList, weight []float64, presentFeats []int, i, j, numPresent int) {
-				defer wg.Done()
-				distList[j] = dist(feat[i], feat[j], weight, presentFeats[:numPresent])
-			}(distList, weight, presentFeats, i, j, numPresent)
-		}
-
-		// wait for all distances to finishes computing (goroutines)
-		wg.Wait()
-		// don't consider the distance to itself
-		max, _ := getMax(distList)
-		distList[i] = max
-
-		// recoGoodList: find the RecoPoinsNum number of closest instances for _the same_ site
-		for j := 0; j < RecoPointsNum; j++ {
-			_, minIndex := getMin(distList[curSite*TrainNum : (curSite+1)*TrainNum])
-			minIndex += curSite * TrainNum // we have to add the off-set in the index above
-
-			if distList[minIndex] > maxGoodDist {
-				maxGoodDist = distList[minIndex]
-			}
-			distList[minIndex] = max // make sure we don't select the same instance again
-			recoGoodList[j] = minIndex
-		}
-
-		// make sure we don't consider any instances for the current site in the future
-		for j := 0; j < TrainNum; j++ {
-			distList[curSite*TrainNum+j] = max
-		}
-
-		// recoBadList: find the RecoPoinsNum number of closest instances for _other_ sites
-		for j := 0; j < RecoPointsNum; j++ {
-			_, minIndex := getMin(distList)
-			if distList[minIndex] <= maxGoodDist {
-				pointBadness++
-			}
-			distList[minIndex] = max // make sure we don't select the same instance again
-			recoBadList[j] = minIndex
-		}
-
-		pointBadness /= float64(RecoPointsNum)
-		pointBadness += 0.2
-
-		featDist := make([]float64, FeatNum)
-		badList := make([]int, FeatNum)
-		var minBadList int
-
-		for j := 0; j < FeatNum; j++ {
-			if weight[j] == 0 {
-				badList[j] = 0
-				panic("does this ever happen?")
-				//continue
-			}
-
-			var maxGood float64
-			var countBad int
-			// find maxGood
-			for k := 0; k < RecoPointsNum; k++ {
-				n := math.Abs(feat[i][j] - feat[recoGoodList[k]][j])
-				if feat[i][j] == -1 || feat[recoGoodList[k]][j] == -1 {
-					n = 0
-				}
-				if n >= maxGood {
-					maxGood = n
+			// determine what features are present for the instance we're training on
+			numPresent := 0
+			for j := 0; j < FeatNum; j++ {
+				if feat[i][j] != -1 {
+					presentFeats[numPresent] = j
+					numPresent++
 				}
 			}
 
-			for k := 0; k < RecoPointsNum; k++ {
-				n := math.Abs(feat[i][j] - feat[recoBadList[k]][j])
-				if feat[i][j] == -1 || feat[recoBadList[k]][j] == -1 {
-					n = 0
+			// calculate the distance to every other instance
+			for j := 0; j < SiteNum*TrainNum; j++ {
+				wg.Add(1)
+				go func(distList, weight []float64, presentFeats []int, i, j, numPresent int) {
+					defer wg.Done()
+					distList[j] = dist(feat[i], feat[j], weight, presentFeats[:numPresent])
+				}(distList, weight, presentFeats, i, j, numPresent)
+			}
+
+			// wait for all distances to finishes computing (goroutines)
+			wg.Wait()
+			// don't consider the distance to itself
+			max, _ := getMax(distList)
+			distList[i] = max
+
+			// recoGoodList: find the RecoPoinsNum number of closest instances for _the same_ site
+			for j := 0; j < RecoPointsNum; j++ {
+				_, minIndex := getMin(distList[curSite*TrainNum : (curSite+1)*TrainNum])
+				minIndex += curSite * TrainNum // we have to add the off-set in the index above
+
+				if distList[minIndex] > maxGoodDist {
+					maxGoodDist = distList[minIndex]
 				}
-				featDist[j] += n
-				if n <= maxGood {
-					countBad++
+				distList[minIndex] = max // make sure we don't select the same instance again
+				recoGoodList[j] = minIndex
+			}
+
+			// make sure we don't consider any instances for the current site in the future
+			for j := 0; j < TrainNum; j++ {
+				distList[curSite*TrainNum+j] = max
+			}
+
+			// recoBadList: find the RecoPoinsNum number of closest instances for _other_ sites
+			for j := 0; j < RecoPointsNum; j++ {
+				_, minIndex := getMin(distList)
+				if distList[minIndex] <= maxGoodDist {
+					pointBadness++
+				}
+				distList[minIndex] = max // make sure we don't select the same instance again
+				recoBadList[j] = minIndex
+			}
+
+			pointBadness /= float64(RecoPointsNum)
+			pointBadness += 0.2
+
+			featDist := make([]float64, FeatNum)
+			badList := make([]int, FeatNum)
+			var minBadList int
+
+			for j := 0; j < FeatNum; j++ {
+				if weight[j] == 0 {
+					badList[j] = 0
+					panic("does this ever happen?")
+					//continue
+				}
+
+				var maxGood float64
+				var countBad int
+				// find maxGood
+				for k := 0; k < RecoPointsNum; k++ {
+					n := math.Abs(feat[i][j] - feat[recoGoodList[k]][j])
+					if feat[i][j] == -1 || feat[recoGoodList[k]][j] == -1 {
+						n = 0
+					}
+					if n >= maxGood {
+						maxGood = n
+					}
+				}
+
+				for k := 0; k < RecoPointsNum; k++ {
+					n := math.Abs(feat[i][j] - feat[recoBadList[k]][j])
+					if feat[i][j] == -1 || feat[recoBadList[k]][j] == -1 {
+						n = 0
+					}
+					featDist[j] += n
+					if n <= maxGood {
+						countBad++
+					}
+				}
+				badList[j] = countBad
+				if countBad < minBadList {
+					minBadList = countBad
 				}
 			}
-			badList[j] = countBad
-			if countBad < minBadList {
-				minBadList = countBad
+
+			var countBadList int
+			for j := 0; j < FeatNum; j++ {
+				if badList[j] != minBadList {
+					countBadList++
+				}
+			}
+
+			// update weights
+			change := make([]float64, countBadList)
+			tmp := 0
+			var c1 float64
+			for j := 0; j < FeatNum; j++ {
+				if badList[j] != minBadList {
+					change[tmp] = weight[j] * 0.01 * float64(badList[j]) / float64(RecoPointsNum) * pointBadness
+					c1 += change[tmp] * featDist[j]
+					weight[j] -= change[tmp]
+					tmp++
+				}
+			}
+
+			var totalfd float64
+			for j := 0; j < FeatNum; j++ {
+				if badList[j] == minBadList && weight[j] > 0 {
+					totalfd += featDist[j]
+				}
+			}
+
+			for j := 0; j < FeatNum; j++ {
+				if badList[j] == minBadList && weight[j] > 0 {
+					weight[j] += c1 / totalfd
+				}
 			}
 		}
 
-		var countBadList int
-		for j := 0; j < FeatNum; j++ {
-			if badList[j] != minBadList {
-				countBadList++
+		for i := 0; i < FeatNum; i++ {
+			if weight[i] > 0 {
+				weight[i] *= 0.9 + rand.Float64()*0.2
 			}
 		}
 
-		// update weights
-		change := make([]float64, countBadList)
-		tmp := 0
-		var c1 float64
-		for j := 0; j < FeatNum; j++ {
-			if badList[j] != minBadList {
-				change[tmp] = weight[j] * 0.01 * float64(badList[j]) / float64(RecoPointsNum) * pointBadness
-				c1 += change[tmp] * featDist[j]
-				weight[j] -= change[tmp]
-				tmp++
-			}
-		}
-
-		var totalfd float64
-		for j := 0; j < FeatNum; j++ {
-			if badList[j] == minBadList && weight[j] > 0 {
-				totalfd += featDist[j]
-			}
-		}
-
-		for j := 0; j < FeatNum; j++ {
-			if badList[j] == minBadList && weight[j] > 0 {
-				weight[j] += c1 / totalfd
-			}
-		}
 	}
-
-	for i := 0; i < FeatNum; i++ {
-		if weight[i] > 0 {
-			weight[i] *= 0.9 + rand.Float64()*0.2
-		}
-	}
-
 	fmt.Print("\n")
 	log.Printf("finished")
 }
