@@ -196,15 +196,15 @@ func parse(filename, suffix string) {
 			log.Fatalf("expected 2 items in line for filename %s, got %d", filename, len(items))
 		}
 
-		t, err := strconv.ParseFloat(items[0], 64)
-		if err != nil {
-			log.Fatalf("failed to parse time for filename %s, %s", filename, err)
+		t, er := strconv.ParseFloat(items[0], 64)
+		if er != nil {
+			log.Fatalf("failed to parse time for filename %s, %s", filename, er)
 		}
 		times = append(times, t)
 
-		s, err := strconv.ParseInt(items[1], 10, 64)
-		if err != nil {
-			log.Fatalf("failed to parse size for filename %s, %s", filename, err)
+		s, er := strconv.ParseInt(items[1], 10, 64)
+		if er != nil {
+			log.Fatalf("failed to parse size for filename %s, %s", filename, er)
 		}
 		sizes = append(sizes, int(s))
 	}
